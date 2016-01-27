@@ -1,11 +1,11 @@
-`wundergroundloader.py` is a script to automate the downloading of wether data from www.wunderground.com
+`wundergroundloader.py` is a script to automate the downloading of hourly weather data from www.wunderground.com as CSV files
 
 Note: wunderground will block your IP if you download more than one file per 6 seconds, hence the 7 second sleep command at the end of this script.
 
 ## Usage
 
 ```
-wundergroundloader.py [options]
+Usage: wundergroundloader.py [options]
 
 Options:
   -h, --help            show this help message and exit
@@ -17,4 +17,5 @@ Options:
                         End date.
   -d ~/weatherdata, --dir=~/weatherdata
                         Save Directory (defaults to current dir)
+  --strip-headers       Strip headers from downloaded csv files.
 ```
