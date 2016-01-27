@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import time
+import sys
 
 logging.basicConfig()
 logger = logging.getLogger('root')
@@ -25,6 +26,13 @@ def parseOptions():
                      help="End date.", metavar="2014-12-31")
     parser.add_option("-d", "--dir", dest="save_dir",
                      help="Save Directory (defaults to current dir)", metavar="~/weatherdata")
+    parser.add_option("--strip-headers", action="store_true", dest="stripheaders",
+                     help="Strip headers from downloaded csv files.")
+# # if only 1 argument, it's the script name
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+
     return parser.parse_args()
 
 def download_data(url):
@@ -36,19 +44,27 @@ def download_data(url):
     else:
         r.raise_for_status()
 
-def save_data(date, data, location=None):
+def save_data(date, data, location=None, stripheaders=False):
     if location is None:
         location = "."
     if not os.path.exists(os.path.join(location, str(date.year))):
         os.mkdir(os.path.join(location, str(date.year)))
     if not os.path.exists(os.path.join(location, str(date.year), str(date.month))):
         os.mkdir(os.path.join(location, str(date.year), str(date.month)))
-    
+
+    # strip headers for appended data
+    if os.path.exists(os.path.join(location, str(date.year), str(date.month), "data.csv")):
+        fileinfo = os.stat(os.path.join(location, str(date.year), str(date.month), "data.csv"))
+        if fileinfo.st_size > 0:
+            stripheaders=True
+
     logger.info("Saving data for %s" % date)
     data = data.split("\n")
     with open(os.path.join(location, str(date.year), str(date.month), "data.csv"), "a") as file:
         for line in data:
-            if line == '' or re.match("Time", line):
+            if re.search("TemperatureF", line) and stripheaders:
+                continue
+            if line == '':
                 continue
             file.write(line.strip("<br />")+"\n")
 
@@ -67,12 +83,18 @@ if __name__ == '__main__':
                                             day=current_date.day)
         try:
             data = download_data(current_url)
-            save_data(current_date, data, options.save_dir)
+            save_data(current_date, data, options.save_dir, options.stripheaders)
         except requests.exceptions.HTTPError, e:
             logger.warn("Couldn't get data for date: %s, %s" % (current_date, e))
         except Exception, e:
             raise
-            
-        current_date += timedelta(days=1)
+
+
         logger.info("...done")
-        time.sleep(7)
+        # Sleep so we don't get blocked by weather underground
+        if current_date == end_date:
+            sys.exit(0)
+        else:
+            time.sleep(7)
+
+        current_date += timedelta(days=1)
